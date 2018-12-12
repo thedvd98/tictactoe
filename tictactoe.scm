@@ -1,17 +1,26 @@
-(use matchable doodle)
+(use matchable doodle nrepl)
 
 ;; logican tictactoe
 ;; 0 vuoto
-(define *campo* '(
-				 (list 0 0 0)
-				 (list 0 0 0)
-				 (list 0 0 0)
-				 ))
+(define *campo*
+  (vector
+	(vector #\0 #\0 #\0)
+	(vector #\0 #\0 #\0)
+	(vector #\0 #\0 #\0)))
+
 (define *turno* 'X)
 
-(define (caniputinhere? col line)
+(define (getsectorstate col line)
+  (vector-ref (vector-ref *campo* line) col))
+;; TODO non va una sega
+(define (setsectorstate col line state)
+  (vector-set! (vector-ref *campo* line) col state))
 
-  )
+(define (caniputinhere? col line)
+  (print (getsectorstate col line))
+  (cond
+	((char=? (getsectorstate col line) #\0) #t)
+	(else #f)))
 ;;
 (define *paint* #f)
 
@@ -41,7 +50,7 @@
 	((<= x (* 2 sector-length)) 1)
 	((>= x (* 2 sector-length)) 2)
 	(else '())
-   )
+	)
   )
 ;; ritorna numero riga
 (define (linenum y)
@@ -49,8 +58,7 @@
 	((<= y sector-height) 0)
 	((<= y (* 2 sector-height)) 1)
 	((>= y (* 2 sector-height)) 2)
-	(else '())
-   )
+	(else '()))
   )
 
 (define (draw-grid)
@@ -91,16 +99,21 @@
   (define xdownleft xtopleft)
   (define ydownleft ydownright)
 
-  ;; linea obliqua da sinistra a destra
-  (draw-line xtopleft ytopleft
-			 xdownright ydownright
-			 color: linex-color)
+  ;; linea obliqua da sinistra a destraA
+  (define (draw)
+	(draw-line xtopleft ytopleft
+			   xdownright ydownright
+			   color: linex-color)
 
-  ;; linea obliqua da destra a sinistra 
-  (draw-line xtopright ytopright
-			 xdownleft ydownleft
-			 color: linex-color)
-  )
+	;; linea obliqua da destra a sinistra 
+	(draw-line xtopright ytopright
+			   xdownleft ydownleft
+			   color: linex-color))
+  (if (caniputinhere? col line)
+	  (begin
+		(setsectorstate col line #\X)
+		(draw))
+	  '()))
 
 (define (draw-o x y)
   (define col (colnum x))
@@ -109,38 +122,48 @@
   (define centerx (/ sector-length 2))
   (define centery (/ sector-height 2))
 
-  (circle
-	(+ centerx (* sector-length col))
-	(+ centery (* sector-height line))
-	sector-height
-	black)
-  )
+  (define (draw)
+	(circle
+	  (+ centerx (* sector-length col))
+	  (+ centery (* sector-height line))
+	  sector-height
+	  black))
+  (if (caniputinhere? col line)
+	(begin
+	  (setsectorstate col line #\O)
+	  (draw))
+	'()))
+
+;;;;;;;;;;
+;; MAIN ;;
+;;;;;;;;;;
+(thread-start! (lambda () (nrepl 1234)))
 
 (world-inits
- (lambda ()
-   (world-update-delay 1000000000)
-   (clear-screen)
-   (set-font! "Vollkorn" 18 red)
-   (draw-grid)
-   ))
+  (lambda ()
+	(world-update-delay 1000000000)
+	(clear-screen)
+	(set-font! "Vollkorn" 18 red)
+	(draw-grid)
+	))
 
 (world-changes
- (lambda (events dt exit)
-   (for-each
-    (lambda (e)
-      (match e
-       (('mouse 'pressed x y 1)
-		(draw-x x y)
-		)
-       (('mouse 'pressed x y 3)
-		(draw-o x y))
-       (('mouse 'moved x y)
-        (when *paint*
-          (filled-circle x y 10 red)))
-       (('key 'pressed #\esc)
-        (exit #t))
-       (else (void))))
-    events)))
+  (lambda (events dt exit)
+	(for-each
+	  (lambda (e)
+		(match e
+			   (('mouse 'pressed x y 1)
+				(draw-x x y)
+				)
+			   (('mouse 'pressed x y 3)
+				(draw-o x y))
+			   (('mouse 'moved x y)
+				(when *paint*
+				  (filled-circle x y 10 red)))
+			   (('key 'pressed #\esc)
+				(exit #t))
+			   (else (void))))
+	  events)))
 
 (new-doodle width: winwidth height: winheight title: "Doodle paint" background: solid-white)
 (run-event-loop #:minimum-wait 0.1)
