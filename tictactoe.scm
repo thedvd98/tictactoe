@@ -8,11 +8,18 @@
 	(vector #\0 #\0 #\0)
 	(vector #\0 #\0 #\0)))
 
-(define *turno* 'X)
+(define *turno* #\X)
+(define *num_mosse* 0)
 
+(define (inc-num-mosse)
+  (add1 *num_mosse*))
+
+(define (cambia-turno)
+  (if (char=? *turno* #\X)
+	(define *turno* #\O)
+	(define *turno* #\X)))
 (define (getsectorstate col line)
   (vector-ref (vector-ref *campo* line) col))
-;; TODO non va una sega
 (define (setsectorstate col line state)
   (vector-set! (vector-ref *campo* line) col state))
 
@@ -21,7 +28,7 @@
   (cond
 	((char=? (getsectorstate col line) #\0) #t)
 	(else #f)))
-;;
+;; drawing things
 (define *paint* #f)
 
 ;; colori
@@ -110,10 +117,10 @@
 			   xdownleft ydownleft
 			   color: linex-color))
   (if (caniputinhere? col line)
-	  (begin
-		(setsectorstate col line #\X)
-		(draw))
-	  '()))
+	(begin
+	  (setsectorstate col line #\X)
+	  (draw))
+	'()))
 
 (define (draw-o x y)
   (define col (colnum x))
@@ -153,10 +160,13 @@
 	  (lambda (e)
 		(match e
 			   (('mouse 'pressed x y 1)
-				(draw-x x y)
+				(if (char=? *turno* #\X)
+				  (draw-x x y)
+				  (draw-o x y)
+				  )
+				(cambia-turno)
+				(inc-num-mosse)
 				)
-			   (('mouse 'pressed x y 3)
-				(draw-o x y))
 			   (('mouse 'moved x y)
 				(when *paint*
 				  (filled-circle x y 10 red)))
