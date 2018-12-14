@@ -10,9 +10,25 @@
 
 (define *turno* #\X)
 (define *num_mosse* 0)
+;; definizioni per indicare come ha vinto il giocatore
+(define *riga* 0)
+(define *colonna* 1)
+(define *diag-lr* 2)
+(define *diag-rl* 3)
 
 (define (inc-num-mosse)
   (add1 *num_mosse*))
+
+(define (restart)
+  (set! *campo*
+	(vector
+	  (vector #\0 #\0 #\0)
+	  (vector #\0 #\0 #\0)
+	  (vector #\0 #\0 #\0)))
+  (set! *turno* #\X)
+  (set! *num_mosse* 0)
+  (clear-screen)
+  (draw-grid))
 
 (define (cambia-turno)
   (if (char=? *turno* #\X)
@@ -28,6 +44,79 @@
   (cond
 	((char=? (getsectorstate col line) #\0) #t)
 	(else #f)))
+;; verifica vincitore
+(define (check-row riga)
+  (define (check-row-ric col riga)
+	(if (= col 0)
+	  (getsectorstate 0 riga)
+	  (if (char=? (check-row-ric (- col 1) riga) (getsectorstate col riga))
+		(getsectorstate col riga)
+		#\0)))
+  (check-row-ric 2 riga))
+
+(define (check-rows)
+  (define (check-rows-ric n)
+	(define ch (check-row n))
+	(if (or
+		  (= n 0)
+		  (not (char=? ch #\0)))
+	  (list ch n)
+	  (check-rows-ric (- n 1))))
+  (check-rows-ric 2))
+
+(define (check-col col)
+  (define (check-col-ric col riga)
+	(if (= riga 0)
+	  (getsectorstate col 0)
+	  (if (char=?
+			(check-col-ric col (- riga 1)) (getsectorstate col riga))
+		(getsectorstate col riga)
+		#\0)))
+  (check-col-ric col 2))
+
+(define (check-cols)
+  (define (check-cols-ric n)
+	(define ch (check-col n))
+	(if (or
+		  (= n 0)
+		  (not (char=? ch #\0)))
+	  (list ch n)
+	  (check-cols-ric (- n 1))))
+  (check-cols-ric 2))
+
+(define (check-diag-left-right)
+  (define (check-diag-lr-ric i j)
+	(if (= i 0)
+	  (getsectorstate 0 0)
+	  (if (char=? 
+			(check-diag-lr-ric (- i 1) (- j 1)) (getsectorstate i j))
+		(getsectorstate i j)
+		#\0)))
+  (check-diag-lr-ric 2 2))
+
+(define (check-diag-right-left)
+  (define (check-diag-rl-ric i j)
+	(if (= i 0)
+	  (getsectorstate 0 2)
+	  (if (char=? 
+			(check-diag-rl-ric (- i 1) (+ j 1)) (getsectorstate i j))
+		(getsectorstate i j)
+		#\0)))
+  (check-diag-rl-ric 2 0))
+
+;; chi e come ha vinto
+(define (who-how-win?)
+  (define rig (check-rows))
+  (define col (check-cols))
+  (define leftright (check-diag-left-right))
+  (define rightleft (check-diag-right-left))
+  (cond
+	((not (char=? (car rig) #\0)) (list rig *riga*))
+	((not (char=? (car col) #\0)) (list col *colonna*))
+	((not (char=? leftright #\0)) (list (list leftright 0) *diag-lr*))
+	((not (char=? rightleft #\0)) (list (list leftright 0) *diag-rl*))
+	(else '())))
+
 ;; drawing things
 (define *paint* #f)
 
